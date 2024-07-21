@@ -32,15 +32,18 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
+
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  console.log('Params:', params);
   const { id } = params;
 
   try {
     await prisma.employee.delete({
       where: { id },
     });
-    return NextResponse.json(null, { status: 204 }); // No Content
+    return new NextResponse(null, { status: 204 }); // No Content
   } catch (error) {
+    console.error('Error deleting employee:', error); // Log the error
     return NextResponse.json({ error: "Error deleting employee" }, { status: 500 });
   }
 }

@@ -1,15 +1,18 @@
 // src/types.ts
 export interface Employee {
-    id: number;
-    name: string;
-    position: string;
-  }
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  position: string;
+}
   
   export interface Shifts {
-    mañana: string[];
-    tarde: string[];
-    noche: string[];
-    franco: string[];
+    morning: string[];
+    afternoon: string[];
+    night: string[];
+    dayOff: string[];
   }
   
   export interface Schedule {

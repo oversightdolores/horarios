@@ -1,118 +1,105 @@
 "use client"
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import { Employee, Schedule, ShiftType } from '../types';
-import { employees as initialEmployees } from '../data/employees';
-import { schedules as initialSchedules } from '../data/schedules';
 
 const Schedules: React.FC = () => {
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
-  const [schedules, setSchedules] = useState<Schedule[]>(initialSchedules);
-  const [newEmployee, setNewEmployee] = useState<{ name: string, position: string }>({ name: '', position: '' });
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [newSchedule, setNewSchedule] = useState<{ day: string, shift: ShiftType, employeeName: string }>({ day: '', shift: '' as ShiftType, employeeName: '' });
   const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
   const [editMode, setEditMode] = useState<{ day: string, shift: ShiftType | null }>({ day: '', shift: null });
 
-  const addEmployee = () => {
-    const newId = employees.length ? employees[employees.length - 1].id + 1 : 1;
-    setEmployees([...employees, { id: newId, name: newEmployee.name, position: newEmployee.position }]);
-    setNewEmployee({ name: '', position: '' });
+  const shiftNames: { [key in ShiftType]: string } = {
+    morning: 'Mañana',
+    afternoon: 'Tarde',
+    night: 'Noche',
+    dayOff: 'Descanso'
   };
 
-  const assignShift = () => {
-    setSchedules(prevSchedules => {
-      return prevSchedules.map(schedule => {
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const employeesResponse = await fetch('/api/employees');
+        const employeesData = await employeesResponse.json();
+        setEmployees(Array.isArray(employeesData) ? employeesData : []);
+
+        const schedulesResponse = await fetch('/api/schedules');
+        const schedulesData = await schedulesResponse.json();
+        setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const assignShift = async () => {
+    if (newSchedule.day && newSchedule.shift && newSchedule.employeeName) {
+      const updatedSchedules = schedules.map(schedule => {
         if (schedule.day === newSchedule.day) {
           return {
             ...schedule,
-            shifts: {
-              ...schedule.shifts,
-              [newSchedule.shift]: [...(schedule.shifts[newSchedule.shift] || []), newSchedule.employeeName],
-            },
+            [newSchedule.shift]: [...schedule[newSchedule.shift], newSchedule.employeeName]
           };
         }
         return schedule;
       });
-    });
-    setNewSchedule({ day: '', shift: '' as ShiftType, employeeName: '' });
+
+      await fetch('/api/schedules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ schedules: updatedSchedules }),
+      });
+
+      setSchedules(updatedSchedules);
+      setNewSchedule({ day: '', shift: '' as ShiftType, employeeName: '' });
+    }
   };
 
-  const assignAuto = () => {
-    const days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-    const shifts: ShiftType[] = ["mañana", "tarde", "noche", "franco"];
-    const totalEmployees = employees.length;
-    let currentEmployeeIndex = 0;
-  
-    const updatedSchedules = days.map(day => {
-      let shiftAssignments = { mañana: [], tarde: [], noche: [], franco: [] };
-  
-      shifts.forEach(shift => {
-        let assignedEmployees;
-        if (shift === "mañana" || shift === "tarde") {
-          if (day === "Viernes") {
-            assignedEmployees = [
-              employees[currentEmployeeIndex].name,
-              employees[(currentEmployeeIndex + 1) % totalEmployees].name
-            ];
-            currentEmployeeIndex = (currentEmployeeIndex + 2) % totalEmployees;
-          } else {
-            assignedEmployees = [
-              employees[currentEmployeeIndex].name,
-              employees[(currentEmployeeIndex + 1) % totalEmployees].name
-            ];
-            currentEmployeeIndex = (currentEmployeeIndex + 2) % totalEmployees;
-          }
-        } else if (shift === "noche") {
-          if (day === "Sábado") {
-            assignedEmployees = [];
-          } else {
-            assignedEmployees = [employees[currentEmployeeIndex].name];
-            currentEmployeeIndex = (currentEmployeeIndex + 1) % totalEmployees;
-          }
-        } else { // franco
-          assignedEmployees = [];
-        }
-        shiftAssignments[shift] = assignedEmployees;
-      });
-  
-      return { day, shifts: shiftAssignments };
+  const assignAuto = async () => {
+    await fetch('/api/schedules', {
+      method: 'POST',
     });
-  
-    // Assign franco based on who has morning off
-    updatedSchedules.forEach(schedule => {
-      const morningOffEmployee = schedule.shifts["mañana"][0];
-      schedule.shifts["franco"] = [morningOffEmployee];
-    });
-  
-    setSchedules(updatedSchedules);
+
+    const updatedSchedules = await fetch('/api/schedules');
+    const schedulesData = await updatedSchedules.json();
+    setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
   };
-  
 
   const handleEditMode = (day: string, shift: ShiftType) => {
     setEditMode({ day, shift });
     setSelectedEmployees(
-      schedules.find(schedule => schedule.day === day)?.shifts[shift]?.map(employeeName => (
-        employees.find(employee => employee.name === employeeName) || { id: '', name: '', position: '' }
+      schedules.find(schedule => schedule.day === day)?.[shift]?.map(employeeName => (
+        employees.find(employee => `${employee.firstName}.${employee.lastName?.charAt(0)}` === employeeName) || { id: '', firstName: '', position: '', lastName: '' }
       )) || []
     );
   };
 
-  const saveChanges = () => {
+  const saveChanges = async () => {
     if (editMode.day && editMode.shift) {
-      setSchedules(prevSchedules => {
-        return prevSchedules.map(schedule => {
-          if (schedule.day === editMode.day) {
-            return {
-              ...schedule,
-              shifts: {
-                ...schedule.shifts,
-                [editMode.shift]: selectedEmployees.map(employee => employee.name),
-              },
-            };
-          }
-          return schedule;
-        });
+      const updatedSchedules = schedules.map(schedule => {
+        if (schedule.day === editMode.day) {
+          return {
+            ...schedule,
+            [editMode.shift]: selectedEmployees.map(employee => `${employee.firstName}.${employee.lastName?.charAt(0)}`)
+          };
+        }
+        return schedule;
       });
+
+      await fetch('/api/schedules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ schedules: updatedSchedules }),
+      });
+
+      setSchedules(updatedSchedules);
       setEditMode({ day: '', shift: null });
     }
   };
@@ -123,32 +110,25 @@ const Schedules: React.FC = () => {
   };
 
   const employeeOptions = employees.map(employee => ({
-    value: employee.name,
-    label: `${employee.name} - ${employee.position}`,
+    value: employee.firstName,
+    label: `${employee.firstName}.${employee.lastName?.charAt(0)}`,
   }));
 
   const handleChangeSelectedEmployees = (selectedOptions: any) => {
-    setSelectedEmployees(selectedOptions.map((option: any) => ({ name: option.value, id: '', position: '' })));
+    setSelectedEmployees(selectedOptions.map((option: any) => {
+      const [firstName, lastName] = option.label.split('.');
+      return {
+        firstName,
+        lastName,
+        id: '',
+        position: ''
+      };
+    }));
   };
 
   return (
     <div>
       <h1>Gestionar Horarios</h1>
-
-      <h2>Agregar Empleado</h2>
-      <input
-        type="text"
-        placeholder="Nombre"
-        value={newEmployee.name}
-        onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
-      />
-      <input
-        type="text"
-        placeholder="Posición"
-        value={newEmployee.position}
-        onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
-      />
-      <button onClick={addEmployee}>Agregar Empleado</button>
 
       <h2>Asignar Turno</h2>
       <select
@@ -165,10 +145,9 @@ const Schedules: React.FC = () => {
         onChange={(e) => setNewSchedule({ ...newSchedule, shift: e.target.value as ShiftType })}
       >
         <option value="">Seleccione un turno</option>
-        <option value="mañana">Mañana</option>
-        <option value="tarde">Tarde</option>
-        <option value="noche">Noche</option>
-        <option value="franco">Franco</option>
+        {Object.entries(shiftNames).map(([key, name]) => (
+          <option key={key} value={key}>{name}</option>
+        ))}
       </select>
       <select
         value={newSchedule.employeeName}
@@ -176,7 +155,7 @@ const Schedules: React.FC = () => {
       >
         <option value="">Seleccione un empleado</option>
         {employees.map(employee => (
-          <option key={employee.id} value={employee.name}>{employee.name}</option>
+          <option key={employee.id} value={`${employee.firstName}.${employee.lastName?.charAt(0)}`}>{`${employee.firstName}.${employee.lastName?.charAt(0)}`}</option>
         ))}
       </select>
       <button onClick={assignShift}>Asignar Turno</button>
@@ -185,11 +164,14 @@ const Schedules: React.FC = () => {
       <h2>Editar Horarios</h2>
       {editMode.day && editMode.shift && (
         <div>
-          <h3>Editando {editMode.shift} del día {editMode.day}</h3>
+          <h3>Editando {shiftNames[editMode.shift]} del día {editMode.day}</h3>
           <Select
             isMulti
             options={employeeOptions}
-            value={selectedEmployees.map(employee => ({ value: employee.name, label: `${employee.name} - ${employee.position}` }))}
+            value={selectedEmployees.map(employee => ({
+              value: `${employee.firstName}.${employee.lastName?.charAt(0)}`,
+              label: `${employee.firstName}.${employee.lastName?.charAt(0)}`
+            }))}
             onChange={handleChangeSelectedEmployees}
           />
           <button onClick={saveChanges}>Guardar Cambios</button>
@@ -208,23 +190,22 @@ const Schedules: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {['mañana', 'tarde', 'noche', 'franco'].map((shift, index) => (
+          {Object.keys(shiftNames).map((shift, index) => (
             <tr key={index}>
-              <td>{shift.charAt(0).toUpperCase() + shift.slice(1)}</td>
+              <td>{shiftNames[shift as ShiftType]}</td>
               {schedules.map((schedule, scheduleIndex) => (
                 <td
                   key={scheduleIndex}
                   onClick={() => handleEditMode(schedule.day, shift as ShiftType)}
                   style={{ cursor: 'pointer', backgroundColor: editMode.day === schedule.day && editMode.shift === shift ? '#f0f0f0' : 'inherit' }}
                 >
-                  {(schedule.shifts[shift as ShiftType] || []).join(' ')}
+                  {(schedule[shift as keyof Schedule] || []).join(', ')}
                 </td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
-
       <style jsx>{`
         table {
           width: 100%;

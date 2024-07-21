@@ -7,6 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Schedule {
+  id        String   @id @default(uuid())
+  day       String
+  morning   String[]
+  afternoon String[]
+  night     String[]
+  dayOff    String[]
+}
+
 model Employee {
   id          String   @id @default(uuid())
   firstName   String
@@ -14,4 +23,9 @@ model Employee {
   email       String   @unique
   phoneNumber String
   position    String
+}
+
+model LastShift {
+  id    Int @id @default(1) // Un solo registro con ID estático
+  index Int @default(0)     // Índice de rotación
 }

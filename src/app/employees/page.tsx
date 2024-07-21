@@ -1,6 +1,7 @@
 // src/pages/employees.tsx
 "use client"
 import React, { useState, useEffect } from "react";
+import EmployeeCard from '../components/EmployeeCard';
 
 interface Employee {
   id: string;
@@ -22,6 +23,8 @@ const Employees: React.FC = () => {
     position: "",
   });
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
 
   useEffect(() => {
     fetch("/api/employees")
@@ -60,6 +63,7 @@ const Employees: React.FC = () => {
       }).then((res) => res.json());
       setEmployees([...employees, addedEmployee]);
     }
+    
     setNewEmployee({
       id: "",
       firstName: "",
@@ -76,12 +80,35 @@ const Employees: React.FC = () => {
     setNewEmployee(employee);
   };
 
+  const openModal = (employee: Employee) => {
+    setIsModalOpen(true);
+    setEmployeeToDelete(employee);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEmployeeToDelete(null);
+  };
+
+  const deleteEmployee = async (id: string) => {
+    const res = await fetch(`/api/employees/${id}`, {
+      method: "DELETE",
+    });
+
+    if (res.ok) {
+      setEmployees(employees.filter((emp) => emp.id !== id));
+      closeModal();
+    } else {
+      console.error("Error al eliminar el empleado");
+    }
+  };
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold mb-6 text-center">Gestión de Empleados</h1>
       <form
         onSubmit={handleSubmit}
-        className="max-w-lg mx-auto p-4 bg-white shadow-md rounded-lg space-y-4"
+        className="max-w-lg mx-auto p-6 bg-white shadow-md rounded-lg space-y-4"
       >
         <h2 className="text-xl font-semibold mb-4">Agregar/Editar Empleado</h2>
         <input
@@ -135,27 +162,17 @@ const Employees: React.FC = () => {
           {editingEmployee ? "Guardar Cambios" : "Agregar Empleado"}
         </button>
       </form>
-
       <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
           <h2 className="text-2xl font-semibold mb-4">Empleados de Playa</h2>
           <ul className="space-y-2">
             {employees?.filter((e) => e.position === "playa").map((employee) => (
-              <li
+              <EmployeeCard 
                 key={employee.id}
-                className="flex justify-between items-center p-4 bg-gray-100 rounded shadow"
-              >
-                <div>
-                  {employee.firstName} {employee.lastName} - {employee.email} -{" "}
-                  {employee.phoneNumber}
-                </div>
-                <button
-                  onClick={() => editEmployee(employee)}
-                  className="btn btn-sm btn-secondary"
-                >
-                  Editar
-                </button>
-              </li>
+                employee={employee}
+                editEmployee={editEmployee}
+                openModal={openModal}
+              />
             ))}
           </ul>
         </div>
@@ -164,25 +181,39 @@ const Employees: React.FC = () => {
           <h2 className="text-2xl font-semibold mb-4">Empleados de Shop</h2>
           <ul className="space-y-2">
             {employees?.filter((e) => e.position === "shop").map((employee) => (
-              <li
+              <EmployeeCard 
                 key={employee.id}
-                className="flex justify-between items-center p-4 bg-gray-100 rounded shadow"
-              >
-                <div>
-                  {employee.firstName} {employee.lastName} - {employee.email} -{" "}
-                  {employee.phoneNumber}
-                </div>
-                <button
-                  onClick={() => editEmployee(employee)}
-                  className="btn btn-sm btn-secondary"
-                >
-                  Editar
-                </button>
-              </li>
+                employee={employee}
+                editEmployee={editEmployee}
+                openModal={openModal}
+              />
             ))}
           </ul>
         </div>
       </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-black opacity-50 absolute inset-0"></div>
+          <div className="bg-white p-6 rounded-lg shadow-lg z-10 max-w-md w-full">
+            <p className="mb-4 text-lg font-semibold text-gray-800">¿Estás seguro de que quieres eliminar a {employeeToDelete?.firstName} {employeeToDelete?.lastName}?</p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors duration-300"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => deleteEmployee(employeeToDelete!.id)}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-300"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
