@@ -3,11 +3,17 @@ import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import { Employee, Schedule, ShiftType } from '../types';
 import Link from 'next/link';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const Schedules: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [newSchedule, setNewSchedule] = useState<{ day: string, shift: ShiftType, employeeName: string }>({ day: '', shift: '' as ShiftType, employeeName: '' });
+  const [newSchedule, setNewSchedule] = useState<{ day: string; shift: ShiftType; employeeName: string }>({
+    day: '',
+    shift: '' as ShiftType,
+    employeeName: '',
+  });
   const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
   const [editMode, setEditMode] = useState<{ day: string, shift: ShiftType | null }>({ day: '', shift: null });
   const [position, setPosition] = useState<'shop' | 'playa'>('shop');
@@ -16,21 +22,30 @@ const Schedules: React.FC = () => {
     morning: 'Mañana',
     afternoon: 'Tarde',
     night: 'Noche',
-    dayOff: 'Descanso'
+    dayOff: 'Descanso',
   };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const employeesResponse = await fetch(`/api/employees?position=${position}`);
+        if (!employeesResponse.ok) {
+          const errorData = await employeesResponse.json();
+          throw new Error(errorData.error);
+        }
         const employeesData = await employeesResponse.json();
         setEmployees(Array.isArray(employeesData) ? employeesData : []);
 
         const schedulesResponse = await fetch(`/api/schedules?position=${position}`);
+        if (!schedulesResponse.ok) {
+          const errorData = await schedulesResponse.json();
+          throw new Error(errorData.error);
+        }
         const schedulesData = await schedulesResponse.json();
         setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error('Error fetching data:', error);
+        toast.error(error.message);
       }
     };
 
@@ -43,45 +58,73 @@ const Schedules: React.FC = () => {
         if (schedule.day === newSchedule.day) {
           return {
             ...schedule,
-            [newSchedule.shift]: [...schedule[newSchedule.shift], newSchedule.employeeName]
+            [newSchedule.shift]: [...schedule[newSchedule.shift], newSchedule.employeeName],
           };
         }
         return schedule;
       });
 
-      await fetch('/api/schedules', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ schedules: updatedSchedules, position }),
-      });
+      try {
+        const response = await fetch('/api/schedules', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ schedules: updatedSchedules, position }),
+        });
 
-      setSchedules(updatedSchedules);
-      setNewSchedule({ day: '', shift: '' as ShiftType, employeeName: '' });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error);
+        }
+
+        setSchedules(updatedSchedules);
+        setNewSchedule({ day: '', shift: '' as ShiftType, employeeName: '' });
+        toast.success('Turno asignado correctamente');
+      } catch (error) {
+        console.error('Error assigning shift:', error);
+        toast.error(error.message);
+      }
     }
   };
 
   const assignAuto = async () => {
-    await fetch('/api/schedules', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ position }),
-    });
+    try {
+      const response = await fetch('/api/schedules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ position }),
+      });
 
-    const updatedSchedules = await fetch(`/api/schedules?position=${position}`);
-    const schedulesData = await updatedSchedules.json();
-    setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error);
+      }
+
+      const result = await response.json();
+      const updatedSchedulesResponse = await fetch(`/api/schedules?position=${position}`);
+      const schedulesData = await updatedSchedulesResponse.json();
+      setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
+      toast.success(result.message);
+    } catch (error) {
+      console.error('Error en la asignación automática de turnos:', error);
+      toast.error(error.message);
+    }
   };
 
   const handleEditMode = (day: string, shift: ShiftType) => {
     setEditMode({ day, shift });
     setSelectedEmployees(
-      schedules.find(schedule => schedule.day === day)?.[shift]?.map(employeeName => (
-        employees.find(employee => `${employee.firstName}.${employee.lastName?.charAt(0)}` === employeeName) || { id: '', firstName: '', position: '', lastName: '' }
-      )) || []
+      schedules
+        .find(schedule => schedule.day === day)?.[shift]
+        .map(employeeName => employees.find(employee => `${employee.firstName}.${employee.lastName?.charAt(0)}` === employeeName) || {
+          id: '',
+          firstName: '',
+          position: '',
+          lastName: '',
+        }) || []
     );
   };
 
@@ -91,22 +134,33 @@ const Schedules: React.FC = () => {
         if (schedule.day === editMode.day) {
           return {
             ...schedule,
-            [editMode.shift]: selectedEmployees.map(employee => `${employee.firstName}.${employee.lastName?.charAt(0)}`)
+            [editMode.shift]: selectedEmployees.map(employee => `${employee.firstName}.${employee.lastName?.charAt(0)}`),
           };
         }
         return schedule;
       });
 
-      await fetch('/api/schedules', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ schedules: updatedSchedules, position }),
-      });
+      try {
+        const response = await fetch('/api/schedules', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ schedules: updatedSchedules, position }),
+        });
 
-      setSchedules(updatedSchedules);
-      setEditMode({ day: '', shift: null });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error);
+        }
+
+        setSchedules(updatedSchedules);
+        setEditMode({ day: '', shift: null });
+        toast.success('Cambios guardados correctamente');
+      } catch (error) {
+        console.error('Error saving changes:', error);
+        toast.error(error.message);
+      }
     }
   };
 
@@ -116,24 +170,27 @@ const Schedules: React.FC = () => {
   };
 
   const employeeOptions = employees.map(employee => ({
-    value: employee.firstName,
+    value: `${employee.firstName}.${employee.lastName?.charAt(0)}`,
     label: `${employee.firstName}.${employee.lastName?.charAt(0)}`,
   }));
 
   const handleChangeSelectedEmployees = (selectedOptions: any) => {
-    setSelectedEmployees(selectedOptions.map((option: any) => {
-      const [firstName, lastName] = option.label.split('.');
-      return {
-        firstName,
-        lastName,
-        id: '',
-        position: ''
-      };
-    }));
+    setSelectedEmployees(
+      selectedOptions.map((option: any) => {
+        const [firstName, lastName] = option.label.split('.');
+        return {
+          firstName,
+          lastName,
+          id: '',
+          position: '',
+        };
+      })
+    );
   };
 
   return (
     <div className="container mx-auto p-4">
+      <ToastContainer />
       <h1 className="text-2xl font-bold mb-4">Gestionar Horarios</h1>
       <Link href="/" className="border p-2 rounded border-gray-300 text-xl no-underline mb-4 inline-block">
         Volver
@@ -190,7 +247,7 @@ const Schedules: React.FC = () => {
             options={employeeOptions}
             value={selectedEmployees.map(employee => ({
               value: `${employee.firstName}.${employee.lastName?.charAt(0)}`,
-              label: `${employee.firstName}.${employee.lastName?.charAt(0)}`
+              label: `${employee.firstName}.${employee.lastName?.charAt(0)}`,
             }))}
             onChange={handleChangeSelectedEmployees}
             className="mb-2"

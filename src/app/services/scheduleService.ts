@@ -1,28 +1,35 @@
 import { prisma } from '../../lib/prisma';
 
 export const assignShifts = async (position: 'shop' | 'playa') => {
+  console.log('positiooooos', position);
   try {
     const employees = await prisma.employee.findMany({
       where: {
-        position
+        position: position
       }
     });
+
+    console.log('filtered employees', employees); // Log para verificar los empleados filtrados
+
     const numEmployees = employees.length;
     if (numEmployees < 6) {
-      throw new Error('No hay suficientes empleados para asignar los turnos');
+      return Promise.reject(new Error('No hay suficientes empleados para asignar los turnos'));
     }
+
 
     const lastShift = await prisma.lastShift.findUnique({ where: { id: 1 } }) || { index: 0 };
     let rotationIndex = lastShift.index;
 
     const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     const schedules = daysOfWeek.reduce((acc, day) => {
-      acc[day] = { morning: [], afternoon: [], night: [], dayOff: [] };
+      acc[day] = { morning: [], afternoon: [], night: [], dayOff: [], position: position };
       return acc;
-    }, {} as Record<string, { morning: string[], afternoon: string[], night: string[], dayOff: string[] }>);
+    }, {} as Record<string, { morning: string[], afternoon: string[], night: string[], dayOff: string[], position: string }>);
 
     const assignShift = (day: string, shiftType: 'morning' | 'afternoon' | 'night' | 'dayOff', employee: any) => {
-      schedules[day][shiftType].push(`${employee.firstName}.${employee.lastName.charAt(0)}`);
+      if (employee && employee.firstName && employee.lastName) {
+        schedules[day][shiftType].push(`${employee.firstName}.${employee.lastName.charAt(0)}`);
+      }
     };
 
     const getShiftEmployees = (startIndex: number, count: number) => {
@@ -40,18 +47,26 @@ export const assignShifts = async (position: 'shop' | 'playa') => {
     const nightShift = getShiftEmployees(rotationIndex + 4, 1)[0];
     const dayOffCoverage = getShiftEmployees(rotationIndex + 5, 1)[0];
 
-    daysOfWeek.forEach(day => {
+    const uniqueDayOffEmployees = [...new Set(employees.slice(0, 6))];
+
+    if (uniqueDayOffEmployees.length < 6) {
+      throw new Error('No hay suficientes empleados únicos para asignar los días de descanso');
+    }
+
+    daysOfWeek.forEach((day, index) => {
+      const dayOffEmployee = uniqueDayOffEmployees[index];
+
       if (day === 'Jueves') {
-        assignShift(day, 'dayOff', dayOffCoverage);
+        assignShift(day, 'dayOff', dayOffEmployee);
         morningShift.forEach(e => assignShift(day, 'morning', e));
         afternoonShift.forEach(e => assignShift(day, 'afternoon', e));
         assignShift(day, 'night', nightShift);
       } else if (day === 'Viernes') {
-        assignShift(day, 'dayOff', dayOffCoverage);
+        assignShift(day, 'dayOff', dayOffEmployee);
         morningShift.forEach(e => assignShift(day, 'morning', e));
         afternoonShift.forEach(e => assignShift(day, 'afternoon', e));
-        assignShift(day, 'morning', dayOffCoverage);
-        assignShift(day, 'afternoon', dayOffCoverage);
+        assignShift(day, 'morning', dayOffEmployee);
+        assignShift(day, 'afternoon', dayOffEmployee);
         assignShift(day, 'night', nightShift);
       } else if (day === 'Sábado') {
         assignShift(day, 'dayOff', nightShift);
@@ -82,7 +97,7 @@ export const assignShifts = async (position: 'shop' | 'playa') => {
 
       await prisma.schedule.deleteMany({
         where: {
-          position
+          position: position
         }
       });
       await prisma.schedule.createMany({
@@ -97,7 +112,10 @@ export const assignShifts = async (position: 'shop' | 'playa') => {
       });
     });
 
+    return { success: true, message: 'Turnos asignados correctamente' };
+
   } catch (error) {
     console.error('Error al asignar turnos:', error);
+    return { success: false, message: error.message };
   }
 };
