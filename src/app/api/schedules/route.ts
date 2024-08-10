@@ -12,12 +12,23 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const { position } = await req.json();
+  console.log('position',position);
+
+  if (position !== 'shop' && position !== 'playa') {
+    return NextResponse.json({ error: 'Invalid position parameter' }, { status: 400 });
+  }
+
   try {
-    await assignShifts();
-    const updatedSchedules = await prisma.schedule.findMany();
-    return NextResponse.json(updatedSchedules, { status: 201 });
+    await assignShifts(position as 'shop' | 'playa');
+    const schedules = await prisma.schedule.findMany({
+      where:{
+        position: position as 'shop' | 'playa'
+      }
+    });
+    return NextResponse.json(schedules);
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Error creating schedule' }, { status: 500 });
+    console.error('Error assigning shifts:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import { Employee, Schedule, ShiftType } from '../types';
 import Link from 'next/link';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const Schedules: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -27,14 +29,23 @@ const Schedules: React.FC = () => {
     const fetchData = async () => {
       try {
         const employeesResponse = await fetch(`/api/employees?position=${position}`);
+        if (!employeesResponse.ok) {
+          const errorData = await employeesResponse.json();
+          throw new Error(errorData.error);
+        }
         const employeesData = await employeesResponse.json();
         setEmployees(Array.isArray(employeesData) ? employeesData : []);
 
         const schedulesResponse = await fetch(`/api/schedules?position=${position}`);
+        if (!schedulesResponse.ok) {
+          const errorData = await schedulesResponse.json();
+          throw new Error(errorData.error);
+        }
         const schedulesData = await schedulesResponse.json();
         setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
       } catch (error) {
         console.error('Error fetching data:', error);
+        toast.error(error.message);
       }
     };
 
@@ -53,31 +64,54 @@ const Schedules: React.FC = () => {
         return schedule;
       });
 
-      await fetch('/api/schedules', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ schedules: updatedSchedules, position }),
-      });
+      try {
+        const response = await fetch('/api/schedules', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ schedules: updatedSchedules, position }),
+        });
 
-      setSchedules(updatedSchedules);
-      setNewSchedule({ day: '', shift: '' as ShiftType, employeeName: '' });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error);
+        }
+
+        setSchedules(updatedSchedules);
+        setNewSchedule({ day: '', shift: '' as ShiftType, employeeName: '' });
+        toast.success('Turno asignado correctamente');
+      } catch (error) {
+        console.error('Error assigning shift:', error);
+        toast.error(error.message);
+      }
     }
   };
 
   const assignAuto = async () => {
-    await fetch('/api/schedules', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ position }),
-    });
+    try {
+      const response = await fetch('/api/schedules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ position }),
+      });
 
-    const updatedSchedules = await fetch(`/api/schedules?position=${position}`);
-    const schedulesData = await updatedSchedules.json();
-    setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error);
+      }
+
+      const result = await response.json();
+      const updatedSchedulesResponse = await fetch(`/api/schedules?position=${position}`);
+      const schedulesData = await updatedSchedulesResponse.json();
+      setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
+      toast.success(result.message);
+    } catch (error) {
+      console.error('Error en la asignación automática de turnos:', error);
+      toast.error(error.message);
+    }
   };
 
   const handleEditMode = (day: string, shift: ShiftType) => {
@@ -106,16 +140,27 @@ const Schedules: React.FC = () => {
         return schedule;
       });
 
-      await fetch('/api/schedules', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ schedules: updatedSchedules, position }),
-      });
+      try {
+        const response = await fetch('/api/schedules', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ schedules: updatedSchedules, position }),
+        });
 
-      setSchedules(updatedSchedules);
-      setEditMode({ day: '', shift: null });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error);
+        }
+
+        setSchedules(updatedSchedules);
+        setEditMode({ day: '', shift: null });
+        toast.success('Cambios guardados correctamente');
+      } catch (error) {
+        console.error('Error saving changes:', error);
+        toast.error(error.message);
+      }
     }
   };
 
@@ -145,6 +190,7 @@ const Schedules: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4">
+      <ToastContainer />
       <h1 className="text-2xl font-bold mb-4">Gestionar Horarios</h1>
       <Link href="/" className="border p-2 rounded border-gray-300 text-xl no-underline mb-4 inline-block">
         Volver

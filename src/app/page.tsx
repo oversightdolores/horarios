@@ -19,6 +19,7 @@ const Home: React.FC = () => {
         </ul>
       </nav>
     </div>
+    
   );
 }
 
