@@ -1,7 +1,8 @@
-"use client"
+'use client'
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import { Employee, Schedule, ShiftType } from '../types';
+import Link from 'next/link';
 
 const Schedules: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -9,6 +10,7 @@ const Schedules: React.FC = () => {
   const [newSchedule, setNewSchedule] = useState<{ day: string, shift: ShiftType, employeeName: string }>({ day: '', shift: '' as ShiftType, employeeName: '' });
   const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
   const [editMode, setEditMode] = useState<{ day: string, shift: ShiftType | null }>({ day: '', shift: null });
+  const [position, setPosition] = useState<'shop' | 'playa'>('shop');
 
   const shiftNames: { [key in ShiftType]: string } = {
     morning: 'Mañana',
@@ -20,11 +22,11 @@ const Schedules: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const employeesResponse = await fetch('/api/employees');
+        const employeesResponse = await fetch(`/api/employees?position=${position}`);
         const employeesData = await employeesResponse.json();
         setEmployees(Array.isArray(employeesData) ? employeesData : []);
 
-        const schedulesResponse = await fetch('/api/schedules');
+        const schedulesResponse = await fetch(`/api/schedules?position=${position}`);
         const schedulesData = await schedulesResponse.json();
         setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
       } catch (error) {
@@ -33,7 +35,7 @@ const Schedules: React.FC = () => {
     };
 
     fetchData();
-  }, []);
+  }, [position]);
 
   const assignShift = async () => {
     if (newSchedule.day && newSchedule.shift && newSchedule.employeeName) {
@@ -52,7 +54,7 @@ const Schedules: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ schedules: updatedSchedules }),
+        body: JSON.stringify({ schedules: updatedSchedules, position }),
       });
 
       setSchedules(updatedSchedules);
@@ -63,9 +65,13 @@ const Schedules: React.FC = () => {
   const assignAuto = async () => {
     await fetch('/api/schedules', {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ position }),
     });
 
-    const updatedSchedules = await fetch('/api/schedules');
+    const updatedSchedules = await fetch(`/api/schedules?position=${position}`);
     const schedulesData = await updatedSchedules.json();
     setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
   };
@@ -96,7 +102,7 @@ const Schedules: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ schedules: updatedSchedules }),
+        body: JSON.stringify({ schedules: updatedSchedules, position }),
       });
 
       setSchedules(updatedSchedules);
@@ -127,44 +133,58 @@ const Schedules: React.FC = () => {
   };
 
   return (
-    <div>
-      <h1>Gestionar Horarios</h1>
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Gestionar Horarios</h1>
+      <Link href="/" className="border p-2 rounded border-gray-300 text-xl no-underline mb-4 inline-block">
+        Volver
+      </Link>
 
-      <h2>Asignar Turno</h2>
-      <select
-        value={newSchedule.day}
-        onChange={(e) => setNewSchedule({ ...newSchedule, day: e.target.value })}
-      >
-        <option value="">Seleccione un día</option>
-        {schedules.map((schedule, index) => (
-          <option key={index} value={schedule.day}>{schedule.day}</option>
-        ))}
+      <h2 className="text-xl font-semibold mb-2">Seleccionar Posición</h2>
+      <select value={position} onChange={(e) => setPosition(e.target.value as 'shop' | 'playa')} className="border border-gray-300 rounded p-2 mb-4">
+        <option value="shop">Shop</option>
+        <option value="playa">Playa</option>
       </select>
-      <select
-        value={newSchedule.shift}
-        onChange={(e) => setNewSchedule({ ...newSchedule, shift: e.target.value as ShiftType })}
-      >
-        <option value="">Seleccione un turno</option>
-        {Object.entries(shiftNames).map(([key, name]) => (
-          <option key={key} value={key}>{name}</option>
-        ))}
-      </select>
-      <select
-        value={newSchedule.employeeName}
-        onChange={(e) => setNewSchedule({ ...newSchedule, employeeName: e.target.value })}
-      >
-        <option value="">Seleccione un empleado</option>
-        {employees.map(employee => (
-          <option key={employee.id} value={`${employee.firstName}.${employee.lastName?.charAt(0)}`}>{`${employee.firstName}.${employee.lastName?.charAt(0)}`}</option>
-        ))}
-      </select>
-      <button onClick={assignShift}>Asignar Turno</button>
-      <button onClick={assignAuto}>Asignación Automática</button>
 
-      <h2>Editar Horarios</h2>
+      <h2 className="text-xl font-semibold mb-2">Asignar Turno</h2>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <select
+          value={newSchedule.day}
+          onChange={(e) => setNewSchedule({ ...newSchedule, day: e.target.value })}
+          className="border border-gray-300 rounded p-2"
+        >
+          <option value="">Seleccione un día</option>
+          {schedules.map((schedule, index) => (
+            <option key={index} value={schedule.day}>{schedule.day}</option>
+          ))}
+        </select>
+        <select
+          value={newSchedule.shift}
+          onChange={(e) => setNewSchedule({ ...newSchedule, shift: e.target.value as ShiftType })}
+          className="border border-gray-300 rounded p-2"
+        >
+          <option value="">Seleccione un turno</option>
+          {Object.entries(shiftNames).map(([key, name]) => (
+            <option key={key} value={key}>{name}</option>
+          ))}
+        </select>
+        <select
+          value={newSchedule.employeeName}
+          onChange={(e) => setNewSchedule({ ...newSchedule, employeeName: e.target.value })}
+          className="border border-gray-300 rounded p-2"
+        >
+          <option value="">Seleccione un empleado</option>
+          {employeeOptions.map(option => (
+            <option key={option.value} value={option.label}>{option.label}</option>
+          ))}
+        </select>
+        <button onClick={assignShift} className="bg-blue-500 text-white p-2 rounded">Asignar Turno</button>
+        <button onClick={assignAuto} className="bg-green-500 text-white p-2 rounded ml-2">Asignación Automática</button>
+      </div>
+
+      <h2 className="text-xl font-semibold mb-2">Editar Horarios</h2>
       {editMode.day && editMode.shift && (
-        <div>
-          <h3>Editando {shiftNames[editMode.shift]} del día {editMode.day}</h3>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold mb-2">Editando {shiftNames[editMode.shift]} del día {editMode.day}</h3>
           <Select
             isMulti
             options={employeeOptions}
@@ -173,31 +193,32 @@ const Schedules: React.FC = () => {
               label: `${employee.firstName}.${employee.lastName?.charAt(0)}`
             }))}
             onChange={handleChangeSelectedEmployees}
+            className="mb-2"
           />
-          <button onClick={saveChanges}>Guardar Cambios</button>
-          <button onClick={cancelEdit}>Cancelar</button>
+          <button onClick={saveChanges} className="bg-blue-500 text-white p-2 rounded">Guardar Cambios</button>
+          <button onClick={cancelEdit} className="bg-red-500 text-white p-2 rounded ml-2">Cancelar</button>
         </div>
       )}
 
-      <h2>Horarios</h2>
-      <table>
+      <h2 className="text-xl font-semibold mb-2">Horarios</h2>
+      <table className="w-full border-collapse mb-4">
         <thead>
           <tr>
-            <th>Día/Turno</th>
+            <th className="border border-gray-300 p-2">Día/Turno</th>
             {schedules.map(schedule => (
-              <th key={schedule.day}>{schedule.day}</th>
+              <th key={schedule.day} className="border border-gray-300 p-2">{schedule.day}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {Object.keys(shiftNames).map((shift, index) => (
             <tr key={index}>
-              <td>{shiftNames[shift as ShiftType]}</td>
+              <td className="border border-gray-300 p-2">{shiftNames[shift as ShiftType]}</td>
               {schedules.map((schedule, scheduleIndex) => (
                 <td
                   key={scheduleIndex}
                   onClick={() => handleEditMode(schedule.day, shift as ShiftType)}
-                  style={{ cursor: 'pointer', backgroundColor: editMode.day === schedule.day && editMode.shift === shift ? '#f0f0f0' : 'inherit' }}
+                  className={`border border-gray-300 p-2 cursor-pointer ${editMode.day === schedule.day && editMode.shift === shift ? 'bg-gray-200' : ''}`}
                 >
                   {(schedule[shift as keyof Schedule] || []).join(', ')}
                 </td>
@@ -206,20 +227,6 @@ const Schedules: React.FC = () => {
           ))}
         </tbody>
       </table>
-      <style jsx>{`
-        table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-        th, td {
-          border: 1px solid black;
-          padding: 8px;
-          text-align: left;
-        }
-        th {
-          background-color: #f2f2f2;
-        }
-      `}</style>
     </div>
   );
 };
