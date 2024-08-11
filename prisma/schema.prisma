@@ -19,7 +19,7 @@ model Schedule {
   afternoon String[]
   night     String[]
   dayOff    String[]
-  position  Position @default(playa) // Agregar la columna 'position' con valor predeterminado
+  position  String
 }
 
 model Employee {

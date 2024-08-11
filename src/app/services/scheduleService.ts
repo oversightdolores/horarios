@@ -95,11 +95,7 @@ export const assignShifts = async (position: 'shop' | 'playa') => {
         create: { id: 1, index: rotationIndex }
       });
 
-      await prisma.schedule.deleteMany({
-        where: {
-          position: position
-        }
-      });
+      await prisma.schedule.deleteMany();
       await prisma.schedule.createMany({
         data: Object.keys(schedules).map(day => ({
           day,
