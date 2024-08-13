@@ -7,10 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Position {
-  playa
-  shop
-}
+
 
 model Schedule {
   id        String   @id @default(uuid())
@@ -19,7 +16,7 @@ model Schedule {
   afternoon String[]
   night     String[]
   dayOff    String[]
-  position  Position @default(playa) // Agregar la columna 'position' con valor predeterminado
+  position  String
 }
 
 model Employee {

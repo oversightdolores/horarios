@@ -1,7 +1,8 @@
-// src/pages/employees.tsx
 "use client"
 import React, { useState, useEffect } from "react";
 import EmployeeCard from '../components/EmployeeCard';
+import { toast, ToastContainer } from "react-toastify";
+import Link from "next/link";
 
 interface Employee {
   id: string;
@@ -25,12 +26,27 @@ const Employees: React.FC = () => {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [position, setPosition] = useState<'shop' | 'playa'>('playa');
+  const [empShop, setEmpShop] = useState<Employee[]>([])
+  const [empPlaya, setEmpPlaya] = useState<Employee[]>([])
 
   useEffect(() => {
-    fetch("/api/employees")
-      .then((res) => res.json())
-      .then((data) => setEmployees(data));
+    fetch('/api/employees?position=shop')
+      .then(res => res.json())
+      .then(data => setEmpShop(data.filter((emp: Employee) => emp.position === 'shop')));
+
+    fetch('/api/employees?position=playa')
+      .then(res => res.json())
+      .then(data => setEmpPlaya(data.filter((emp: Employee) => emp.position === 'playa')));
   }, []);
+
+  useEffect(() => {
+    if (empShop.length === 0) {
+      setPosition('playa');
+    } else if (empPlaya.length === 0) {
+      setPosition('shop');
+    }
+  }, [empShop, empPlaya]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -40,7 +56,6 @@ const Employees: React.FC = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    console.log(editingEmployee)
     e.preventDefault();
     if (editingEmployee) {
       const updatedEmployee = await fetch(`/api/employees/${editingEmployee.id}`, {
@@ -50,6 +65,7 @@ const Employees: React.FC = () => {
         },
         body: JSON.stringify(newEmployee),
       }).then((res) => res.json());
+      toast.success("Empleado actualizado correctamente")
       setEmployees(
         employees.map((emp) => (emp.id === updatedEmployee.id ? updatedEmployee : emp))
       );
@@ -61,9 +77,10 @@ const Employees: React.FC = () => {
         },
         body: JSON.stringify(newEmployee),
       }).then((res) => res.json());
+     // toast.success("Empleado agregado correctamente")
       setEmployees([...employees, addedEmployee]);
     }
-    
+
     setNewEmployee({
       id: "",
       firstName: "",
@@ -98,13 +115,19 @@ const Employees: React.FC = () => {
     if (res.ok) {
       setEmployees(employees.filter((emp) => emp.id !== id));
       closeModal();
+      toast.info("Empleado eliminado correctamente")
     } else {
       console.error("Error al eliminar el empleado");
+      toast.error("Error al eliminar el empleado")
     }
   };
 
   return (
     <div className="container mx-auto p-4">
+      <Link href="/" className="border p-2 rounded border-gray-300 text-xl no-underline mb-4 inline-block">
+        Volver
+      </Link>
+      <ToastContainer />
       <h1 className="text-3xl font-bold mb-6 text-center">Gestión de Empleados</h1>
       <form
         onSubmit={handleSubmit}
@@ -166,8 +189,10 @@ const Employees: React.FC = () => {
         <div>
           <h2 className="text-2xl font-semibold mb-4">Empleados de Playa</h2>
           <ul className="space-y-2">
-            {employees?.filter((e) => e.position === "playa").map((employee) => (
-              <EmployeeCard 
+            {
+            empPlaya.length > 0 &&
+            empPlaya.map((employee) => (
+              <EmployeeCard
                 key={employee.id}
                 employee={employee}
                 editEmployee={editEmployee}
@@ -180,14 +205,15 @@ const Employees: React.FC = () => {
         <div>
           <h2 className="text-2xl font-semibold mb-4">Empleados de Shop</h2>
           <ul className="space-y-2">
-            {employees?.filter((e) => e.position === "shop").map((employee) => (
-              <EmployeeCard 
-                key={employee.id}
-                employee={employee}
-                editEmployee={editEmployee}
-                openModal={openModal}
-              />
-            ))}
+          {empShop.length > 0 &&
+              empShop.map((employee) => (
+                <EmployeeCard
+                  key={employee.id}
+                  employee={employee}
+                  editEmployee={editEmployee}
+                  openModal={openModal}
+                />
+              ))}
           </ul>
         </div>
       </div>
