@@ -20,10 +20,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    await assignShifts(position as 'shop' | 'playa');
+    await assignShifts(position);
     const schedules = await prisma.schedule.findMany({
       where:{
-        position: position as 'shop' | 'playa'
+        
+        position: position
       }
     });
     return NextResponse.json(schedules);

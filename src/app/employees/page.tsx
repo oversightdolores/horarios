@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import EmployeeCard from '../components/EmployeeCard';
 import { toast, ToastContainer } from "react-toastify";
+import Link from "next/link";
 
 interface Employee {
   id: string;
@@ -76,7 +77,7 @@ const Employees: React.FC = () => {
         },
         body: JSON.stringify(newEmployee),
       }).then((res) => res.json());
-      toast.success("Empleado agregado correctamente")
+     // toast.success("Empleado agregado correctamente")
       setEmployees([...employees, addedEmployee]);
     }
 
@@ -123,6 +124,9 @@ const Employees: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4">
+      <Link href="/" className="border p-2 rounded border-gray-300 text-xl no-underline mb-4 inline-block">
+        Volver
+      </Link>
       <ToastContainer />
       <h1 className="text-3xl font-bold mb-6 text-center">Gestión de Empleados</h1>
       <form

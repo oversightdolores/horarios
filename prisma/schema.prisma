@@ -7,10 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Position {
-  playa
-  shop
-}
+
 
 model Schedule {
   id        String   @id @default(uuid())
