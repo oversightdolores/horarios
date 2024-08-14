@@ -1,5 +1,6 @@
 'use client'
 import Link from "next/link";
+import Image from "next/image";
 import React from "react";
 
 export const NavBar: React.FC = () => {
@@ -7,7 +8,7 @@ export const NavBar: React.FC = () => {
     <nav className="flex justify-between items-center p-4 bg-gray-900 text-white w-full shadow-md">
       {/* Logo */}
       <div className="flex items-center">
-        <img src="/logo.png" alt="Logo" className="h-10 w-10 mr-4"/>
+        <Image src="/logo.png" alt="Logo" className="h-10 w-10 mr-4"/>
         <span className="text-2xl font-bold">Mi Empresa</span>
       </div>
       
