@@ -137,6 +137,6 @@ if (uniqueDayOffEmployees.length < 6) {
 
   } catch (error) {
     console.error('Error al asignar turnos:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: (error as Error).message };
   }
 };
