@@ -15,7 +15,8 @@ const Schedules: React.FC = () => {
     employeeName: '',
   });
   const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
-  const [editMode, setEditMode] = useState<{ day: string, shift: ShiftType | null }>({ day: '', shift: null });
+  const [editMode, setEditMode] = useState<{ day: string; shift: ShiftType | null }>({ day: '', shift: null });
+
   const [position, setPosition] = useState<'shop' | 'playa'>('shop');
 
   const shiftNames: { [key in ShiftType]: string } = {
@@ -24,6 +25,8 @@ const Schedules: React.FC = () => {
     night: 'Noche',
     dayOff: 'Descanso',
   };
+
+  
 
   useEffect(() => {
     const fetchData = async () => {
@@ -43,9 +46,9 @@ const Schedules: React.FC = () => {
         }
         const schedulesData = await schedulesResponse.json();
         setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error fetching data:', error);
-        toast.error(error.message);
+        toast.error((error as Error).message);
       }
     };
 
@@ -81,9 +84,9 @@ const Schedules: React.FC = () => {
         setSchedules(updatedSchedules);
         setNewSchedule({ day: '', shift: '' as ShiftType, employeeName: '' });
         toast.success('Turno asignado correctamente');
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error assigning shift:', error);
-        toast.error(error.message);
+        toast.error((error as Error).message);
       }
     }
   };
@@ -108,9 +111,9 @@ const Schedules: React.FC = () => {
       const schedulesData = await updatedSchedulesResponse.json();
       setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
       toast.success(result.message);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error en la asignación automática de turnos:', error);
-      toast.error(error.message);
+      toast.error((error as Error).message);
     }
   };
 
@@ -122,8 +125,10 @@ const Schedules: React.FC = () => {
         .map(employeeName => employees.find(employee => `${employee.firstName}.${employee.lastName?.charAt(0)}` === employeeName) || {
           id: '',
           firstName: '',
-          position: '',
           lastName: '',
+          position: '',
+          email: '',
+          phoneNumber: ''
         }) || []
     );
   };
@@ -132,9 +137,10 @@ const Schedules: React.FC = () => {
     if (editMode.day && editMode.shift) {
       const updatedSchedules = schedules.map(schedule => {
         if (schedule.day === editMode.day) {
+          const shiftKey = editMode.shift as keyof Schedule;
           return {
             ...schedule,
-            [editMode.shift]: selectedEmployees.map(employee => `${employee.firstName}.${employee.lastName?.charAt(0)}`),
+            [shiftKey]: selectedEmployees.map(employee => `${employee.firstName}.${employee.lastName?.charAt(0)}`),
           };
         }
         return schedule;
@@ -157,9 +163,9 @@ const Schedules: React.FC = () => {
         setSchedules(updatedSchedules);
         setEditMode({ day: '', shift: null });
         toast.success('Cambios guardados correctamente');
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error saving changes:', error);
-        toast.error(error.message);
+        toast.error((error as Error).message);
       }
     }
   };
@@ -178,11 +184,14 @@ const Schedules: React.FC = () => {
     setSelectedEmployees(
       selectedOptions.map((option: any) => {
         const [firstName, lastName] = option.label.split('.');
-        return {
+        const foundEmployee = employees.find(emp => emp.firstName === firstName && emp.lastName?.charAt(0) === lastName);
+        return foundEmployee || {
+          id: '',
           firstName,
           lastName,
-          id: '',
           position: '',
+          email: '',
+          phoneNumber: ''
         };
       })
     );
@@ -259,7 +268,7 @@ const Schedules: React.FC = () => {
 
       <h2 className="text-xl font-semibold mb-2">Horarios</h2>
       <table className="w-full border-collapse mb-4">
-        <thead>
+        <thead> 
           <tr>
             <th className="border border-gray-300 p-2">Día/Turno</th>
             {schedules.map(schedule => (
@@ -268,20 +277,25 @@ const Schedules: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {Object.keys(shiftNames).map((shift, index) => (
-            <tr key={index}>
-              <td className="border border-gray-300 p-2">{shiftNames[shift as ShiftType]}</td>
-              {schedules.map((schedule, scheduleIndex) => (
-                <td
-                  key={scheduleIndex}
-                  onClick={() => handleEditMode(schedule.day, shift as ShiftType)}
-                  className={`border border-gray-300 p-2 cursor-pointer ${editMode.day === schedule.day && editMode.shift === shift ? 'bg-gray-200' : ''}`}
-                >
-                  {(schedule[shift as keyof Schedule] || []).join(', ')}
-                </td>
-              ))}
-            </tr>
-          ))}
+        {Object.keys(shiftNames).map((shift, index) => (
+  <tr key={index}>
+    <td className="border border-gray-300 p-2">{shiftNames[shift as ShiftType]}</td>
+    {schedules.map((schedule, scheduleIndex) => {
+      const shiftEmployees = schedule[shift as keyof Schedule];
+      const employeeNames = Array.isArray(shiftEmployees) ? shiftEmployees.join(', ') : '';
+      return (
+        <td
+          key={scheduleIndex}
+          onClick={() => handleEditMode(schedule.day, shift as ShiftType)}
+          className={`border border-gray-300 p-2 cursor-pointer ${editMode.day === schedule.day && editMode.shift === shift ? 'bg-gray-200' : ''}`}
+        >
+          {employeeNames}
+        </td>
+      );
+    })}
+  </tr>
+))}
+
         </tbody>
       </table>
     </div>

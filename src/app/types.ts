@@ -3,10 +3,11 @@ export interface Employee {
   id: string;
   firstName: string;
   lastName: string;
+  position: string;
   email: string;
   phoneNumber: string;
-  position: string;
 }
+
   
   export interface Shifts {
     morning: string[];
@@ -17,8 +18,13 @@ export interface Employee {
   
   export interface Schedule {
     day: string;
-    shifts: Shifts;
+    morning: string[];
+    afternoon: string[];
+    night: string[];
+    dayOff: string[];
+    employees: Employee[];
   }
+  
   
   export type ShiftType = keyof Shifts;
   
